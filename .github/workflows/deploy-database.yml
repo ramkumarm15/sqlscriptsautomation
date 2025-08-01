@@ -19,7 +19,7 @@ jobs:
       - name: Download migration scripts artifact
         uses: actions/download-artifact@v4
         with:
-          name: db-migrations
+          name: db-deployment-package
           path: migrations
 
       - name: Install SqlServer PowerShell Module
