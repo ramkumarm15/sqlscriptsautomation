@@ -15,12 +15,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Download migration scripts artifact
         uses: actions/download-artifact@v4
         with:
-          name: db-deployment-package
-          path: migrations
+          name: db-migrations
 
       - name: Install SqlServer PowerShell Module
         shell: pwsh
@@ -30,32 +28,30 @@ jobs:
         shell: pwsh
         run: ./scripts/deploy.ps1 -ConnectionString "${{ secrets.DEV_DB_CONNECTION_STRING }}" -MigrationsPath "./migrations"
 
-  # deploy-prod:
-  #   name: Deploy to Production
-  #   needs: deploy-dev # Only run if dev deployment succeeds
-  #   runs-on: ubuntu-latest
-  #   environment: production # This environment must be configured with required reviewers
-  #   # Prevent multiple concurrent deployments to production
-  #   concurrency:
-  #     group: production-migrations
-  #     cancel-in-progress: true
-  #   # Wait up to 3 days for an approval
-  #   timeout-minutes: 4320
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
+  deploy-prod:
+    name: Deploy to Production
+    needs: deploy-dev # Only run if dev deployment succeeds
+    runs-on: ubuntu-latest
+    environment: production # This environment must be configured with required reviewers
+    # Prevent multiple concurrent deployments to production
+    concurrency:
+      group: production-migrations
+      cancel-in-progress: true
+    # Wait up to 3 days for an approval
+    timeout-minutes: 4320
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  #     - name: Download migration scripts artifact
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: db-migrations
-  #         path: migrations
+      - name: Download migration scripts artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: db-migrations
 
-  #     - name: Install SqlServer PowerShell Module
-  #       shell: pwsh
-  #       run: Install-Module -Name SqlServer -Force -AcceptLicense
+      - name: Install SqlServer PowerShell Module
+        shell: pwsh
+        run: Install-Module -Name SqlServer -Force -AcceptLicense
 
-  #     - name: Deploy to Production Database
-  #       shell: pwsh
-
-  #       run: ./scripts/deploy.ps1 -ConnectionString "${{ secrets.PROD_DB_CONNECTION_STRING }}" -MigrationsPath "./migrations"
+      - name: Deploy to Production Database
+        shell: pwsh
+        run: ./scripts/deploy.ps1 -ConnectionString "${{ secrets.PROD_DB_CONNECTION_STRING }}" -MigrationsPath "./migrations"
