@@ -31,15 +31,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: development
     steps:
-    #   - name: Get Runner's Public IP for Debugging
-    #     id: ip
-    #     uses: haythem/public-ip@v1.3
-
-    #   - name: Print Runner's Public IP
-    #     run: |
-    #       echo "Runner Public IP is: ${{ steps.ip.outputs.ipv4 }}"
-    #       echo "Add this IP to your Azure SQL Firewall rules for this run."
-
       - name: Download deployment package
         uses: actions/download-artifact@v4
         with:
