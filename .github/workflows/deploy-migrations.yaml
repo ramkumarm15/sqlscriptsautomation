@@ -16,11 +16,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Archive migration scripts
+      - name: Archive deployment package
         uses: actions/upload-artifact@v4
         with:
-          name: db-migrations
-          path: migrations/
+          name: db-deployment-package
+          path: |
+            migrations/
+            scripts/
           retention-days: 5
 
   deploy-dev:
@@ -29,13 +31,19 @@ jobs:
     runs-on: ubuntu-latest
     environment: development
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Get Runner's Public IP for Debugging
+        id: ip
+        uses: haythem/public-ip@v1.3
 
-      - name: Download migration scripts artifact
+      - name: Print Runner's Public IP
+        run: |
+          echo "Runner Public IP is: ${{ steps.ip.outputs.ipv4 }}"
+          echo "Add this IP to your Azure SQL Firewall rules for this run."
+
+      - name: Download deployment package
         uses: actions/download-artifact@v4
         with:
-          name: db-migrations # This name matches the artifact from the 'build' job
+          name: db-deployment-package
 
       - name: Install SqlServer PowerShell Module
         shell: pwsh
@@ -45,24 +53,22 @@ jobs:
         shell: pwsh
         run: ./scripts/deploy.ps1 -ConnectionString "${{ secrets.DEV_DB_CONNECTION_STRING }}" -MigrationsPath "./migrations"
 
-  # deploy-prod:
-  #   name: Deploy to Production
-  #   needs: deploy-dev # This job will only run after the 'deploy-dev' job succeeds
-  #   runs-on: ubuntu-latest
-  #   environment: production # This environment should have a 'Required reviewers' rule
-  #   concurrency:
-  #     group: production-migrations
-  #     cancel-in-progress: true
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #     - name: Download migration scripts artifact
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: db-migrations
-  #     - name: Install SqlServer PowerShell Module
-  #       shell: pwsh
-  #       run: Install-Module -Name SqlServer -Force -AcceptLicense
-  #     - name: Deploy to Production Database
-  #       shell: pwsh
-  #       run: ./scripts/deploy.ps1 -ConnectionString "${{ secrets.PROD_DB_CONNECTION_STRING }}" -MigrationsPath "./migrations"
+#   deploy-prod:
+#     name: Deploy to Production
+#     needs: deploy-dev # This job will only run after the 'deploy-dev' job succeeds
+#     runs-on: ubuntu-latest
+#     environment: production # This environment should have a 'Required reviewers' rule
+#     concurrency:
+#       group: production-migrations
+#       cancel-in-progress: true
+#     steps:
+#       - name: Download deployment package
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: db-deployment-package
+#       - name: Install SqlServer PowerShell Module
+#         shell: pwsh
+#         run: Install-Module -Name SqlServer -Force -AcceptLicense
+#       - name: Deploy to Production Database
+#         shell: pwsh
+#         run: ./scripts/deploy.ps1 -ConnectionString "${{ secrets.PROD_DB_CONNECTION_STRING }}" -MigrationsPath "./migrations"
