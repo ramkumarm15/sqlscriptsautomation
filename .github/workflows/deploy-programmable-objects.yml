@@ -1,0 +1,91 @@
+name: Deploy Programmable Objects
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'procs/**'
+      - 'views/**'
+      - 'functions/**'
+      # In the future, you can add other folders like 'functions/**' here.
+
+jobs:
+  deploy-dev:
+    name: Deploy Objects to Development
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get changed programmable object files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: |
+            procs/**.sql
+            views/**.sql
+            functions/**.sql
+
+      - name: Install SqlServer PowerShell Module
+        shell: pwsh
+        run: Install-Module -Name SqlServer -Force -AcceptLicense
+
+      - name: Deploy to Development Database
+        shell: pwsh
+        run: |
+          $changedFiles = "${{ steps.changed-files.outputs.all_changed_files }}"
+          if (-not [string]::IsNullOrWhiteSpace($changedFiles)) {
+              $fileList = $changedFiles.Split(' ')
+              foreach ($file in $fileList) {
+                  Write-Host "Applying changed file: $file..."
+                  Invoke-Sqlcmd -ConnectionString "${{ secrets.DEV_DB_CONNECTION_STRING }}" -InputFile $file -ErrorAction Stop
+              }
+              Write-Host "Successfully deployed all changed programmable objects to Development."
+          } else {
+              Write-Host "No changed programmable object scripts found in this push."
+          }
+
+#   deploy-prod:
+    # name: Deploy Objects to Production
+    # needs: deploy-dev # Only run if dev deployment succeeds
+    # runs-on: ubuntu-latest
+    # environment: production # This environment must be configured with required reviewers
+    # # Prevent multiple concurrent deployments to production
+    # concurrency:
+    #   group: production-objects
+    #   cancel-in-progress: true
+    # # Wait up to 3 days for an approval
+    # timeout-minutes: 4320
+    # steps:
+    #   - name: Checkout code
+    #     uses: actions/checkout@v4
+
+    #   - name: Get changed programmable object files
+    #     id: changed-files
+    #     uses: tj-actions/changed-files@v44
+    #     with:
+    #       files: |
+    #         procs/**.sql
+    #         views/**.sql
+    #         functions/**.sql
+
+    #   - name: Install SqlServer PowerShell Module
+    #     shell: pwsh
+    #     run: Install-Module -Name SqlServer -Force -AcceptLicense
+
+    #   - name: Deploy to Production Database
+    #     shell: pwsh
+    #     run: |
+    #       $changedFiles = "${{ steps.changed-files.outputs.all_changed_files }}"
+    #       if (-not [string]::IsNullOrWhiteSpace($changedFiles)) {
+    #           $fileList = $changedFiles.Split(' ')
+    #           foreach ($file in $fileList) {
+    #               Write-Host "Applying changed file: $file..."
+    #               Invoke-Sqlcmd -ConnectionString "${{ secrets.PROD_DB_CONNECTION_STRING }}" -InputFile $file -ErrorAction Stop
+    #           }
+    #           Write-Host "Successfully deployed all changed programmable objects to Production."
+    #       } else {
+    #           Write-Host "No changed programmable object scripts found in this push."
+    #       }

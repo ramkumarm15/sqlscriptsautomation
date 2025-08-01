@@ -1,0 +1,26 @@
+name: Build Database Artifact
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'migrations/**'
+      - 'scripts/**'
+
+jobs:
+  build:
+    name: Validate and Package SQL
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Archive deployment package
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-deployment-package
+          path: |
+            migrations/
+            scripts/
+          retention-days: 5

@@ -1,0 +1,16 @@
+BEGIN TRANSACTION;
+BEGIN TRY
+
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = N'Email' AND Object_ID = Object_ID(N'dbo.Users'))
+    BEGIN
+        ALTER TABLE dbo.Users
+        ADD Email NVARCHAR(255) NULL;
+    END
+
+COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
+GO
