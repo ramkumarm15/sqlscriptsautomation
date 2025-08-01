@@ -1,0 +1,68 @@
+name: Build and Deploy Migrations
+
+on:
+  workflow_dispatch: # Allows manual triggering of the entire pipeline
+  push:
+    branches:
+      - main
+    paths:
+      - 'migrations/**'
+
+jobs:
+  build:
+    name: Build Database Artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Archive migration scripts
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-migrations
+          path: migrations/
+          retention-days: 5
+
+  deploy-dev:
+    name: Deploy to Development
+    needs: build # This job will only run after the 'build' job succeeds
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download migration scripts artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: db-migrations # This name matches the artifact from the 'build' job
+
+      - name: Install SqlServer PowerShell Module
+        shell: pwsh
+        run: Install-Module -Name SqlServer -Force -AcceptLicense
+
+      - name: Deploy to Development Database
+        shell: pwsh
+        run: ./scripts/deploy.ps1 -ConnectionString "${{ secrets.DEV_DB_CONNECTION_STRING }}" -MigrationsPath "./migrations"
+
+  # deploy-prod:
+  #   name: Deploy to Production
+  #   needs: deploy-dev # This job will only run after the 'deploy-dev' job succeeds
+  #   runs-on: ubuntu-latest
+  #   environment: production # This environment should have a 'Required reviewers' rule
+  #   concurrency:
+  #     group: production-migrations
+  #     cancel-in-progress: true
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #     - name: Download migration scripts artifact
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: db-migrations
+  #     - name: Install SqlServer PowerShell Module
+  #       shell: pwsh
+  #       run: Install-Module -Name SqlServer -Force -AcceptLicense
+  #     - name: Deploy to Production Database
+  #       shell: pwsh
+  #       run: ./scripts/deploy.ps1 -ConnectionString "${{ secrets.PROD_DB_CONNECTION_STRING }}" -MigrationsPath "./migrations"
