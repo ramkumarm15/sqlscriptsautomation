@@ -47,9 +47,12 @@ try {
             Write-Host "Applying '$($file.Name)'..."
             $scriptContent = Get-Content -Path $file.FullName -Raw
             Invoke-Sqlcmd -ConnectionString $ConnectionString -Query $scriptContent -ErrorAction Stop
-            
-            $insertQuery = "INSERT INTO dbo.SchemaVersions (ScriptName) VALUES (@ScriptName);"
-            Invoke-Sqlcmd -ConnectionString $ConnectionString -Query $insertQuery -QueryParameter @{ ScriptName = $file.Name } -ErrorAction Stop
+
+            # The -QueryParameter is not available in all versions of the SqlServer module.
+            # We revert to a string-based query, ensuring the filename is sanitized to prevent SQL injection.
+            $sanitizedScriptName = $file.Name.Replace("'", "''")
+            $insertQuery = "INSERT INTO dbo.SchemaVersions (ScriptName) VALUES ('$sanitizedScriptName');"
+            Invoke-Sqlcmd -ConnectionString $ConnectionString -Query $insertQuery -ErrorAction Stop
             Write-Host "Successfully applied and recorded '$($file.Name)'."
         }
     }
@@ -58,4 +61,5 @@ try {
 catch {
     Write-Error "Deployment failed. Error: $($_.Exception.Message)"
     exit 1 # Exit with a non-zero code to fail the pipeline
+
 }
